@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { FixedSizeList, ListChildComponentProps } from 'react-window';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
@@ -7,6 +7,7 @@ import styles from './UserEditor.module.scss';
 import AppInitializer from '../InitializeData/AppInitializer';
 
 const UserEditor: React.FC = () => {
+  // 1. Все хуки состояния и хранилища в начале
   const dispatch = useDispatch<AppDispatch>();
   const {
     users,
@@ -17,13 +18,14 @@ const UserEditor: React.FC = () => {
   } = useSelector((state: RootState) => state.users);
   
   const [editedUser, setEditedUser] = useState(selectedUser);
-  const displayUsers = filteredUsers.length > 0 ? filteredUsers : users;
 
-  if (!initialized) {
-    return <AppInitializer />;
-  }
+  // 2. Мемоизированные значения
+  const displayUsers = useMemo(() => 
+    filteredUsers.length > 0 ? filteredUsers : users,
+    [filteredUsers, users]
+  );
 
-  // Мемоизированные обработчики
+  // 3. Все обработчики с useCallback
   const handleUserClick = useCallback((user: typeof selectedUser) => {
     if (user) {
       dispatch(selectUser(user)); 
@@ -42,10 +44,16 @@ const UserEditor: React.FC = () => {
     }
   }, [dispatch, editedUser]);
 
-  // Оптимизированный компонент строки
+  // 4. Эффекты в конце
+  useEffect(() => {
+    setEditedUser(selectedUser);
+  }, [selectedUser]);
+
+  // 5. Компонент строки должен быть стабильным
   const UserRow = useCallback(({ index, style }: ListChildComponentProps) => {
     const user = displayUsers[index];
     const isSelected = selectedUser?.id === user.id;
+    
     
     return (
       <div 
@@ -59,28 +67,27 @@ const UserEditor: React.FC = () => {
         </div>
       </div>
     );
-  }, [displayUsers, selectedUser, handleUserClick]);
+  }, [displayUsers, selectedUser, handleUserClick, styles]);
+
+  // Ранний возврат должен быть перед любыми хуками
+  if (!initialized || loading) {
+    return <AppInitializer />;
+  }
 
   return (
     <div className={styles.container}>
-      {/* Список пользователей (сайдбар) */}
       <div className={styles.userList}>
-        {loading ? (
-          <div className={styles.loading}>Loading...</div>
-        ) : (
-          <FixedSizeList
-            height={window.innerHeight}
-            itemCount={displayUsers.length}
-            itemSize={80} 
-            width="100%"
-            overscanCount={10} //производительности при скролле
-          >
-            {UserRow}
-          </FixedSizeList>
-        )}
+        <FixedSizeList
+          height={window.innerHeight}
+          itemCount={displayUsers.length}
+          itemSize={80}
+          width="100%"
+          overscanCount={10}
+        >
+          {UserRow}
+        </FixedSizeList>
       </div>
 
-      {/* Панель редактирования */}
       {selectedUser && editedUser && (
         <div className={styles.editorPanel}>
           <h2>Edit Profile</h2>

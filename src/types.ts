@@ -31,7 +31,8 @@ export interface UsersState {
   loadProgress: number;
 }
 
-export type WorkerMessage = {
-  action: 'FILTER' | 'SORT' | 'FILTER_RESULT' | 'SORT_RESULT';
-  payload: any;
-};
+export type WorkerMessage = 
+  | { type: 'progress'; progress: number; loaded: number; total: number }
+  | { type: 'batch'; data: User[] }
+  | { type: 'complete' }
+  | { type: 'error'; error: string };
