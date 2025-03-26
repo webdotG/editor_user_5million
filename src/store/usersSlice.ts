@@ -9,50 +9,30 @@ const initialState: UsersState = {
   error: null,
   filterCriteria: {},
   sortConfig: { field: 'name', direction: 'asc' },
-  lastUpdated: null
+  lastUpdated: null,
+  initialized: false,
+  loadProgress: 0
 };
 
 // Асинхронные действия
 export const fetchUsers = createAsyncThunk(
   'users/fetchUsers',
-  async (count: number) => {
+  async (count: number, { dispatch }) => {
     const worker = new Worker(new URL('../utils/dataGenerator.worker.ts', import.meta.url));
     
-    return new Promise<User[]>((resolve) => {
+    return new Promise<User[]>((resolve, reject) => {
       worker.postMessage({ count });
       
       worker.onmessage = (e) => {
-        if (e.data) {
+        if (e.data?.type === 'progress') {
+          // Обновляем прогресс через dispatch
+          dispatch(setLoadProgress(e.data.loaded / e.data.total * 100));
+        } else if (Array.isArray(e.data)) {
           worker.terminate();
           resolve(e.data);
-        }
-      };
-    });
-  }
-);
-
-export const processUsers = createAsyncThunk(
-  'users/processUsers',
-  async ({ action, payload }: { 
-    action: 'FILTER' | 'SORT';
-    payload: any 
-  }, { getState }) => {
-    const worker = new Worker(new URL('../utils/dataProcessor.worker.ts', import.meta.url));
-    const { users } = (getState() as { users: UsersState }).users;
-
-    return new Promise<User[]>((resolve) => {
-      worker.postMessage({ 
-        action,
-        payload: { 
-          users: payload.users || users,
-          ...payload 
-        }
-      });
-      
-      worker.onmessage = (e: MessageEvent<WorkerMessage>) => {
-        if (e.data.action === `${action}_RESULT`) {
+        } else if (e.data?.type === 'error') {
           worker.terminate();
-          resolve(e.data.payload);
+          reject(new Error(e.data.error));
         }
       };
     });
@@ -63,6 +43,13 @@ const usersSlice = createSlice({
   name: 'users',
   initialState,
   reducers: {
+    setUsers: (state, action: PayloadAction<User[]>) => {
+      state.users = action.payload;
+      state.initialized = true;
+    },
+    setLoadProgress: (state, action: PayloadAction<number>) => {
+      state.loadProgress = action.payload;
+    },
     selectUser: (state, action: PayloadAction<User>) => {
       state.selectedUser = action.payload;
     },
@@ -71,16 +58,12 @@ const usersSlice = createSlice({
       state.users = state.users.map(user => 
         user.id === updatedUser.id ? updatedUser : user
       );
-      
-      // Обновляем filteredUsers если пользователь есть там
       state.filteredUsers = state.filteredUsers.map(user => 
         user.id === updatedUser.id ? updatedUser : user
       );
-      
       if (state.selectedUser?.id === updatedUser.id) {
         state.selectedUser = updatedUser;
       }
-      
       state.lastUpdated = new Date().toISOString();
     },
     setFilterCriteria: (state, action: PayloadAction<FilterCriteria>) => {
@@ -97,22 +80,22 @@ const usersSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Обработка fetchUsers
       .addCase(fetchUsers.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.loadProgress = 0;
       })
       .addCase(fetchUsers.fulfilled, (state, action: PayloadAction<User[]>) => {
         state.users = action.payload;
         state.loading = false;
+        state.loadProgress = 100;
         state.lastUpdated = new Date().toISOString();
+        state.initialized = true;
       })
       .addCase(fetchUsers.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to fetch users';
       })
-      
-      // Обработка processUsers
       .addCase(processUsers.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -130,6 +113,8 @@ const usersSlice = createSlice({
 });
 
 export const { 
+  setUsers,
+  setLoadProgress,
   selectUser, 
   updateUser, 
   setFilterCriteria, 

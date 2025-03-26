@@ -27,6 +27,8 @@ export interface UsersState {
   filterCriteria: FilterCriteria;
   sortConfig: SortConfig;
   lastUpdated: string | null;
+  initialized: boolean;
+  loadProgress: number;
 }
 
 export type WorkerMessage = {

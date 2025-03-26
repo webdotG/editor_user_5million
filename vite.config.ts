@@ -9,5 +9,10 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ['@faker-js/faker']
+  },
+  server: {
+    fs: {
+      strict: false // Для работы с большими файлами
+    }
   }
 })

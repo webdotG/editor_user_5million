@@ -1,32 +1,44 @@
 import { faker } from '@faker-js/faker';
 
-self.onmessage = async (e) => {
-  const { count } = e.data;
-  
-  const generateUsers = (count: number) => {
-    const users = [];
-    for (let i = 0; i < count; i++) {
-      users.push({
-        id: i + 1,
-        name: faker.person.firstName(),
-        surname: faker.person.lastName(),
-        age: faker.number.int({ min: 18, max: 90 }),
-        email: faker.internet.email(),
-        department: faker.commerce.department(),
-        company: faker.company.name(),
-        jobTitle: faker.person.jobTitle()
-      });
-
-      if (i % 2500000 === 0) {
-        self.postMessage({ progress: i / count });
-      }
-
-    }
-    return users;
-  };
-
-  const users = await generateUsers(count);
-  self.postMessage(users);
+// Генерация порциями по 100K для избежания блокировки
+const generateUsersBatch = (start: number, end: number) => {
+  const batch = [];
+  for (let i = start; i < end; i++) {
+    batch.push({
+      id: i + 1,
+      name: faker.person.firstName(),
+      surname: faker.person.lastName(),
+      age: faker.number.int({ min: 18, max: 90 }),
+      email: faker.internet.email(),
+      department: faker.commerce.department(),
+      company: faker.company.name(),
+      jobTitle: faker.person.jobTitle()
+    });
+  }
+  return batch;
 };
 
-export default {} as typeof Worker & { new(): Worker };
+self.onmessage = async (e) => {
+  try {
+    const { count } = e.data;
+    const BATCH_SIZE = 100000;
+    const users = [];
+    
+    for (let i = 0; i < count; i += BATCH_SIZE) {
+      const batch = generateUsersBatch(i, Math.min(i + BATCH_SIZE, count));
+      users.push(...batch);
+      
+      if (i % 500000 === 0) {
+        self.postMessage({ 
+          type: 'progress', 
+          loaded: i, 
+          total: count 
+        });
+      }
+    }
+
+    self.postMessage(users);
+  } catch (error) {
+    self.postMessage({ type: 'error', error});
+  }
+};
