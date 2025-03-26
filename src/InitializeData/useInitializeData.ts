@@ -1,24 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { setUsers } from '../store/usersSlice';
-import { generateMockUsers } from '../utils/fakerMocData';
 
 export const useInitializeData = (count: number = 1000000) => {
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const initializeData = async () => {
-      try {
-        setLoading(true);
-        const users = generateMockUsers(count);
-        dispatch(setUsers(users));
-      } finally {
-        setLoading(false);
-      }
+    const worker = new Worker(new URL('../utils/dataGenerator.worker.ts', import.meta.url));
+    
+    worker.postMessage({ count });
+    
+    worker.onmessage = (e) => {
+      dispatch(setUsers(e.data));
+      setLoading(false);
+      worker.terminate();
     };
 
-    initializeData();
+    return () => worker.terminate();
   }, [dispatch, count]);
 
   return { loading };

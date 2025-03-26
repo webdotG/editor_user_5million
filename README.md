@@ -22,3 +22,19 @@ src/
 └── styles/
     └── App.module.scss         # Глобальные стили
 ```
+
+    Генерация:
+
+        AppInitializer → useInitializeData → dataGenerator.worker.ts
+
+        Результат сохраняется в Redux store
+
+    Фильтрация/сортировка:
+
+        Пользователь взаимодействует с UI
+
+        Вызывается processUsers action
+
+        Данные отправляются в dataProcessor.worker.ts
+
+        Результат возвращается и сохраняется в store

@@ -1,50 +1,56 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { User, UsersState, SortConfig, FilterCriteria } from '../types';
+import { User, UsersState, FilterCriteria, SortConfig, WorkerMessage } from '../types';
 
 const initialState: UsersState = {
-    users: [],
-    filteredUsers: [],
-    selectedUser: null,
-    loading: false,
-    error: null,
-    filterCriteria: {},
-    sortConfig: { field: 'name', direction: 'asc' }
-  };
+  users: [],
+  filteredUsers: [],
+  selectedUser: null,
+  loading: false,
+  error: null,
+  filterCriteria: {},
+  sortConfig: { field: 'name', direction: 'asc' },
+  lastUpdated: null
+};
 
-export const filterUsers = createAsyncThunk(
-  'users/filterUsers',
-  async ({ users, criteria }: { users: User[]; criteria: FilterCriteria }) => {
-    const worker = new Worker(new URL('../workers/userWorker.ts', import.meta.url));
+// Асинхронные действия
+export const fetchUsers = createAsyncThunk(
+  'users/fetchUsers',
+  async (count: number) => {
+    const worker = new Worker(new URL('../utils/dataGenerator.worker.ts', import.meta.url));
     
     return new Promise<User[]>((resolve) => {
-      worker.postMessage({ 
-        action: 'FILTER', 
-        payload: { users, criteria } 
-      });
+      worker.postMessage({ count });
       
-      worker.onmessage = (e: MessageEvent<WorkerMessage>) => {
-        if (e.data.action === 'FILTER_RESULT') {
+      worker.onmessage = (e) => {
+        if (e.data) {
           worker.terminate();
-          resolve(e.data.payload);
+          resolve(e.data);
         }
       };
     });
   }
 );
 
-export const sortUsers = createAsyncThunk(
-  'users/sortUsers',
-  async ({ users, field, direction }: { users: User[]; field: keyof User; direction: 'asc' | 'desc' }) => {
-    const worker = new Worker(new URL('../workers/userWorker.ts', import.meta.url));
-    
+export const processUsers = createAsyncThunk(
+  'users/processUsers',
+  async ({ action, payload }: { 
+    action: 'FILTER' | 'SORT';
+    payload: any 
+  }, { getState }) => {
+    const worker = new Worker(new URL('../utils/dataProcessor.worker.ts', import.meta.url));
+    const { users } = (getState() as { users: UsersState }).users;
+
     return new Promise<User[]>((resolve) => {
       worker.postMessage({ 
-        action: 'SORT', 
-        payload: { users, field, direction } 
+        action,
+        payload: { 
+          users: payload.users || users,
+          ...payload 
+        }
       });
       
       worker.onmessage = (e: MessageEvent<WorkerMessage>) => {
-        if (e.data.action === 'SORT_RESULT') {
+        if (e.data.action === `${action}_RESULT`) {
           worker.terminate();
           resolve(e.data.payload);
         }
@@ -57,9 +63,6 @@ const usersSlice = createSlice({
   name: 'users',
   initialState,
   reducers: {
-    setUsers: (state, action: PayloadAction<User[]>) => {
-      state.users = action.payload;
-    },
     selectUser: (state, action: PayloadAction<User>) => {
       state.selectedUser = action.payload;
     },
@@ -69,43 +72,69 @@ const usersSlice = createSlice({
         user.id === updatedUser.id ? updatedUser : user
       );
       
+      // Обновляем filteredUsers если пользователь есть там
+      state.filteredUsers = state.filteredUsers.map(user => 
+        user.id === updatedUser.id ? updatedUser : user
+      );
+      
       if (state.selectedUser?.id === updatedUser.id) {
         state.selectedUser = updatedUser;
       }
+      
+      state.lastUpdated = new Date().toISOString();
     },
     setFilterCriteria: (state, action: PayloadAction<FilterCriteria>) => {
       state.filterCriteria = action.payload;
     },
     setSortConfig: (state, action: PayloadAction<SortConfig>) => {
       state.sortConfig = action.payload;
+    },
+    resetUsers: (state) => {
+      state.filteredUsers = [];
+      state.filterCriteria = {};
+      state.sortConfig = { field: 'name', direction: 'asc' };
     }
   },
   extraReducers: (builder) => {
     builder
-      .addCase(filterUsers.pending, (state) => {
+      // Обработка fetchUsers
+      .addCase(fetchUsers.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
-      .addCase(filterUsers.fulfilled, (state, action: PayloadAction<User[]>) => {
+      .addCase(fetchUsers.fulfilled, (state, action: PayloadAction<User[]>) => {
+        state.users = action.payload;
+        state.loading = false;
+        state.lastUpdated = new Date().toISOString();
+      })
+      .addCase(fetchUsers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to fetch users';
+      })
+      
+      // Обработка processUsers
+      .addCase(processUsers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(processUsers.fulfilled, (state, action: PayloadAction<User[]>) => {
         state.filteredUsers = action.payload;
         state.loading = false;
+        state.lastUpdated = new Date().toISOString();
       })
-      .addCase(filterUsers.rejected, (state, action) => {
-        state.error = action.error.message || 'Filtering failed';
+      .addCase(processUsers.rejected, (state, action) => {
         state.loading = false;
-      })
-      .addCase(sortUsers.pending, (state) => {
-        state.loading = true;
-      })
-      .addCase(sortUsers.fulfilled, (state, action: PayloadAction<User[]>) => {
-        state.filteredUsers = action.payload;
-        state.loading = false;
-      })
-      .addCase(sortUsers.rejected, (state, action) => {
-        state.error = action.error.message || 'Sorting failed';
-        state.loading = false;
+        state.error = action.error.message || 'Processing failed';
       });
   }
 });
 
-export const { setUsers, selectUser, updateUser, setFilterCriteria, setSortConfig } = usersSlice.actions;
+export const { 
+  selectUser, 
+  updateUser, 
+  setFilterCriteria, 
+  setSortConfig,
+  resetUsers
+} = usersSlice.actions;
+
 export default usersSlice.reducer;

@@ -8,9 +8,9 @@ const AppInitializer: React.FC = () => {
   if (!loading) return null;
 
   return (
-    <div className={styles['loader']}>
-      <div className={styles['spinner']}></div>
-      <p>Loading 3M users...</p>
+    <div className={styles.loader}>
+      <div className={styles.spinner} />
+      <p>Generating 1M users...</p>
     </div>
   );
 };
