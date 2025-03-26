@@ -1,6 +1,6 @@
 # Editor User million's
 
-```TS
+```JS
 
 export interface User {
   id: number;
@@ -23,48 +23,51 @@ export interface SortConfig {
 }
 
 export interface UsersState {
-  users: User[];
-  filteredUsers: User[];
-  selectedUser: User | null;
-  loading: boolean;
-  error: string | null;
-  filterCriteria: FilterCriteria;
-  sortConfig: SortConfig;
-  lastUpdated: string | null;
-  initialized: boolean;
-  loadProgress: number;
+  users: [], // Полный список пользователей
+  filteredUsers: [], // Отфильтрованный список
+  selectedUser: null, // Выбранный пользователь для редактирования
+  loading: false, // Флаг загрузки
+  error: null, // Ошибки при работе с данными
+  filterCriteria: {}, // Текущие критерии фильтрации
+  sortConfig: { field: 'name', direction: 'asc' }, // Параметры сортировки
+  lastUpdated: null, // Время последнего обновления
+  initialized: false, // Флаг инициализации хранилища
+  loadProgress: 0, // Прогресс загрузки (0-100)
+  currentPage: 0, // Текущая страница пагинации
+  pageSize: 50, // Количество элементов на странице
+  totalCount: 0 // Общее количество пользователей
 }
 
-export type WorkerMessage = {
-  action: 'FILTER' | 'SORT' | 'FILTER_RESULT' | 'SORT_RESULT';
-  payload: any;
-};
+сначала поступаем так :
+переходим в склонированный репозиторий   
 
+пишем : node mockServer.js
 
 src/
+├── mockServer.js       # Поднятие сервера localhost_'смотреть в () как единожды создать бд, Внимательно!'
+├── mockUsers.json      # БД на 2.5млн юзеров
 ├── App.tsx
 ├── main.tsx
-├── InitializeData/
-│   ├── useInitializeData.ts    # Хук для инициализации данных
-│   ├── AppInitializer.tsx      # Компонент инициализации
-│   └── AppInitializer.module.scss
 ├── store/
-│   ├── store.ts                # Redux store
-│   └── usersSlice.ts           # Redux slice
+│   ├── store.ts                
+│   └── usersSlice.ts           
 ├── components/
-│   └── UserEditor/
-│       ├── UserEditor.tsx      # Основной компонент
-│       └── UserEditor.module.scss
-├── utils/
-│   ├── fakerDataGenerator.worker.ts  # Генерация моковых данных
-│   └── fakerDataProcessor.worker.ts  # Web Worker
+│   └── EditUser/
+│     ├───EditingUser/
+│           ├── EditingUser.tsx           
+│           └── .module.scss 
+│     ├───UsersList/
+│           ├── store.ts            
+│           └── .module.scss 
+│       ├── UserEditor.tsx          
+│       └── .module.scss
 └── styles/
-    └── App.module.scss         # Глобальные стили
+    └── App.module.scss       
 
 
     Генерация:
 
-        AppInitializer → useInitializeData → fakerDataGenerator.worker.ts
+        
 
         Результат сохраняется в Redux store
 
@@ -72,10 +75,6 @@ src/
 
         Пользователь взаимодействует с UI
 
-        Вызывается processUsers action
-
-        Данные отправляются в fakerDataProcessor.worker.ts
-
-        Результат возвращается и сохраняется в store
+        Результат сохраняется в store
 
 ```

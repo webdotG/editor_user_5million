@@ -1,7 +1,26 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { User, UsersState, FilterCriteria, SortConfig, WorkerMessage } from '../types';
+import { createSlice, createAsyncThunk, PayloadAction, createSelector } from '@reduxjs/toolkit';
+import { User } from '../types';
 
-// Начальное состояние хранилища
+export interface UsersState {
+  users: User[];
+  filteredUsers: User[];
+  selectedUser: User | null;
+  loading: boolean;
+  error: string | null;
+  filterCriteria: Partial<User>;
+  sortConfig: {
+    field: keyof User;
+    direction: 'asc' | 'desc';
+  };
+  lastUpdated: string | null;
+  initialized: boolean;
+  currentPage: number;
+  pageSize: number;
+  totalCount: number;
+  hasMore: boolean;
+}
+
+// Начальное состояние с явными типами
 const initialState: UsersState = {
   users: [],
   filteredUsers: [],
@@ -9,86 +28,76 @@ const initialState: UsersState = {
   loading: false,
   error: null,
   filterCriteria: {},
-  sortConfig: { field: 'name', direction: 'asc' },
+  sortConfig: { 
+    field: 'name', 
+    direction: 'asc' 
+  },
   lastUpdated: null,
   initialized: false,
-  loadProgress: 0
+  currentPage: 0,
+  pageSize: 50,
+  totalCount: 0,
+  hasMore: true
 };
 
-// Асинхронная загрузка пользователей через Web Worker
+// Селекторы
+export const selectPaginatedUsers = createSelector(
+  (state: { users: UsersState }) => state.users.filteredUsers,
+  (state: { users: UsersState }) => state.users.currentPage,
+  (state: { users: UsersState }) => state.users.pageSize,
+  (users, page, size) => users.slice(page * size, (page + 1) * size)
+);
+
+// Загрузка пользователей
 export const fetchUsers = createAsyncThunk(
   'users/fetchUsers',
-  async (count: number, { dispatch }) => {
-    const worker = new Worker(new URL('../utils/fakerDataGenerator.worker.ts', import.meta.url), {
-      type: 'module' 
-    });
-
-    return new Promise<User[]>((resolve, reject) => {
-      const allUsers: User[] = [];
-      
-      worker.onmessage = (e: MessageEvent<WorkerMessage>) => {
-        if (e.data.type === 'progress') {
-          dispatch(setLoadProgress(e.data.progress));
-        } else if (e.data.type === 'batch') { 
-          allUsers.push(...e.data.data);
-        } else if (e.data.type === 'complete') {
-          worker.terminate();
-          resolve(allUsers);
-        } else if (e.data.type === 'error') {
-          worker.terminate();
-          reject(new Error(e.data.error));
-        }
-      };
-
-      worker.onerror = (error) => {
-        worker.terminate();
-        reject(new Error(`Worker error: ${error.message}`));
-      };
-
-      worker.postMessage({ count });
-    });
+  async ({ page = 0, size = 50 }: { page?: number; size?: number } = {}, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`/api/users/paginated?page=${page}&size=${size}`);
+      if (!response.ok) throw new Error('Network response was not ok');
+      return await response.json();
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
   }
 );
 
-// Асинхронная обработка пользователей (фильтрация + сортировка)
-export const processUsers = createAsyncThunk(
-  'users/processUsers',
-  async (_, { getState }) => {
-    const state = getState() as { users: UsersState };
-    const { users, filterCriteria, sortConfig } = state.users;
-
-    await new Promise(resolve => setTimeout(resolve, 100)); // Имитация асинхронности
-
-    let filteredUsers = [...users];
-    
-    // Фильтрация по имени (если задано)
-    if (filterCriteria.name) {
-      filteredUsers = filteredUsers.filter(user => 
-        user.name.toLowerCase().includes(filterCriteria.name!.toLowerCase())
-      );
+// Фильтрация
+export const filterUsers = createAsyncThunk(
+  'users/filterUsers',
+  async (criteria: Partial<User>, { rejectWithValue }) => {
+    try {
+      const params = new URLSearchParams();
+      if (criteria.department) params.append('department', criteria.department);
+      if (criteria.company) params.append('company', criteria.company);
+      if (criteria.age) params.append('age', criteria.age.toString());
+      
+      const response = await fetch(`/api/users/filter?${params.toString()}`);
+      if (!response.ok) throw new Error('Filter request failed');
+      return await response.json();
+    } catch (error: any) {
+      return rejectWithValue(error.message);
     }
-    
-    // Фильтрация по возрасту (если задан)
-    if (typeof filterCriteria.age === 'number') {
-      const targetAge = filterCriteria.age;
-      filteredUsers = filteredUsers.filter(user => 
-        user.age === targetAge
-      );
-    }
+  }
+);
 
-    // Сортировка (если задана)
-    if (sortConfig.field) {
-      filteredUsers.sort((a, b) => {
-        const fieldA = a[sortConfig.field as keyof User];
-        const fieldB = b[sortConfig.field as keyof User];
-        
-        if (fieldA < fieldB) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (fieldA > fieldB) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
+// Обновление пользователя
+export const updateUser = createAsyncThunk(
+  'users/updateUser',
+  async (user: User, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`/api/users/${user.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(user)
       });
+      if (!response.ok) throw new Error('Update failed');
+      return await response.json();
+    } catch (error: any) {
+      return rejectWithValue(error.message);
     }
-
-    return filteredUsers;
   }
 );
 
@@ -96,99 +105,84 @@ const usersSlice = createSlice({
   name: 'users',
   initialState,
   reducers: {
-    // Установка списка пользователей
-    setUsers: (state, action: PayloadAction<User[]>) => {
-      state.users = action.payload;
-      state.initialized = true;
-    },
-    
-    // Обновление прогресса загрузки
-    setLoadProgress: (state, action: PayloadAction<number>) => {
-      state.loadProgress = action.payload;
-    },
-    
-    // Выбор конкретного пользователя
-    selectUser: (state, action: PayloadAction<User>) => {
+    selectUser: (state, action: PayloadAction<User | null>) => {
       state.selectedUser = action.payload;
     },
-    
-    // Обновление данных пользователя
-    updateUser: (state, action: PayloadAction<User>) => {
-      const updatedUser = action.payload;
-      state.users = state.users.map(user => 
-        user.id === updatedUser.id ? updatedUser : user
-      );
-      state.filteredUsers = state.filteredUsers.map(user => 
-        user.id === updatedUser.id ? updatedUser : user
-      );
-      if (state.selectedUser?.id === updatedUser.id) {
-        state.selectedUser = updatedUser;
-      }
-      state.lastUpdated = new Date().toISOString();
-    },
-    
-    // Установка критериев фильтрации
-    setFilterCriteria: (state, action: PayloadAction<FilterCriteria>) => {
+    setFilterCriteria: (state, action: PayloadAction<Partial<User>>) => {
       state.filterCriteria = action.payload;
+      state.currentPage = 0;
     },
-    
-    // Установка параметров сортировки
-    setSortConfig: (state, action: PayloadAction<SortConfig>) => {
+    setSortConfig: (state, action: PayloadAction<{field: keyof User, direction: 'asc' | 'desc'}>) => {
       state.sortConfig = action.payload;
     },
-    
-    // Сброс фильтров и сортировки
+    setPage: (state, action: PayloadAction<number>) => {
+      state.currentPage = action.payload;
+    },
+    setPageSize: (state, action: PayloadAction<number>) => {
+      state.pageSize = action.payload;
+      state.currentPage = 0;
+    },
     resetUsers: (state) => {
       state.filteredUsers = [];
       state.filterCriteria = {};
       state.sortConfig = { field: 'name', direction: 'asc' };
+      state.currentPage = 0;
     }
   },
   extraReducers: (builder) => {
     builder
-      // Обработка состояний загрузки пользователей
       .addCase(fetchUsers.pending, (state) => {
         state.loading = true;
         state.error = null;
-        state.loadProgress = 0;
       })
-      .addCase(fetchUsers.fulfilled, (state, action: PayloadAction<User[]>) => {
-        state.users = action.payload;
+      .addCase(fetchUsers.fulfilled, (state, action) => {
+        state.users = action.payload.data; // берем data из ответа
+        state.totalCount = action.payload.total; // берем total из ответа
         state.loading = false;
-        state.loadProgress = 100;
+        state.hasMore = (state.currentPage + 1) * state.pageSize < action.payload.total;
         state.lastUpdated = new Date().toISOString();
-        state.initialized = true;
       })
       .addCase(fetchUsers.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch users';
+        state.error = action.payload as string;
       })
-      
-      // Обработка состояний фильтрации/сортировки
-      .addCase(processUsers.pending, (state) => {
+      .addCase(filterUsers.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(processUsers.fulfilled, (state, action: PayloadAction<User[]>) => {
+      .addCase(filterUsers.fulfilled, (state, action) => {
         state.filteredUsers = action.payload;
+        state.totalCount = action.payload.length;
         state.loading = false;
+        state.currentPage = 0;
         state.lastUpdated = new Date().toISOString();
       })
-      .addCase(processUsers.rejected, (state, action) => {
+      .addCase(filterUsers.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Processing failed';
+        state.error = action.payload as string;
+      })
+      .addCase(updateUser.fulfilled, (state, action) => {
+        const updatedUser = action.payload;
+        const index = state.users.findIndex(u => u.id === updatedUser.id);
+        if (index !== -1) state.users[index] = updatedUser;
+        
+        const filteredIndex = state.filteredUsers.findIndex(u => u.id === updatedUser.id);
+        if (filteredIndex !== -1) state.filteredUsers[filteredIndex] = updatedUser;
+        
+        if (state.selectedUser?.id === updatedUser.id) {
+          state.selectedUser = updatedUser;
+        }
+        state.lastUpdated = new Date().toISOString();
       });
   }
 });
 
-// Экспорт действий
 export const { 
-  setUsers,
-  setLoadProgress,
-  selectUser, 
-  updateUser, 
-  setFilterCriteria, 
+  selectUser,
+  setFilterCriteria,
   setSortConfig,
+  setPage,
+  setPageSize,
   resetUsers
 } = usersSlice.actions;
 

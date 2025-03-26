@@ -8,7 +8,7 @@ import { fetchUsers } from './store/usersSlice';
 
 const App: React.FC = () => {
   useEffect(() => {
-    store.dispatch(fetchUsers(1000)); //1000 пользователей для теста
+    store.dispatch(fetchUsers(100)); 
   }, []);
 
   return (

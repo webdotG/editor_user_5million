@@ -9,7 +9,7 @@ const AppInitializer: React.FC = () => {
   return loading ? (
     <div className={styles.loader}>
       <div className={styles.spinner}></div>
-      <p>Generating 7.5M users... {Math.round(loadProgress)}%</p>
+      <p>Генерирование 2.5M пользователей ... {Math.round(loadProgress)}%</p>
       <div className={styles.progressBar}>
         <div 
           className={styles.progress} 
