@@ -11,15 +11,11 @@ export default defineConfig({
   },
   server: {
     fs: {
-      strict: false // Для работы с большими файлами
+      strict: false, // Для работы с большими файлами
     },
     proxy: {
-      '/api': {
-        target: 'http://localhost:6969',
-        changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/api/,  '/api')
-      }
+      '/api': 'http://localhost:6969'
     }
+  }
   },
 })

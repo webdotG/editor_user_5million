@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction, createSelector } from '@reduxjs/toolkit';
 import { User } from '../types';
 
-export interface UsersState {
+interface UsersState {
   users: User[];
   filteredUsers: User[];
   selectedUser: User | null;
@@ -20,7 +20,6 @@ export interface UsersState {
   hasMore: boolean;
 }
 
-// Начальное состояние с явными типами
 const initialState: UsersState = {
   users: [],
   filteredUsers: [],
@@ -42,61 +41,67 @@ const initialState: UsersState = {
 
 // Селекторы
 export const selectPaginatedUsers = createSelector(
-  (state: { users: UsersState }) => state.users.filteredUsers,
-  (state: { users: UsersState }) => state.users.currentPage,
-  (state: { users: UsersState }) => state.users.pageSize,
-  (users, page, size) => users.slice(page * size, (page + 1) * size)
+  [
+    (state: { users: UsersState }) => state.users.filteredUsers.length 
+      ? state.users.filteredUsers 
+      : state.users.users,
+    (state: { users: UsersState }) => state.users.currentPage,
+    (state: { users: UsersState }) => state.users.pageSize
+  ],
+  (users, page, size) => {
+    const start = page * size;
+    const end = start + size;
+    return users.slice(start, end);
+  }
 );
 
-// Загрузка пользователей
+// Асинхронные действия
 export const fetchUsers = createAsyncThunk(
   'users/fetchUsers',
-  async ({ page = 0, size = 50 }: { page?: number; size?: number } = {}, { rejectWithValue }) => {
+  async ({ page = 0, size = 50 }: { page?: number; size?: number }, { rejectWithValue }) => {
     try {
       const response = await fetch(`/api/users/paginated?page=${page}&size=${size}`);
-      if (!response.ok) throw new Error('Network response was not ok');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return await response.json();
-    } catch (error: any) {
-      return rejectWithValue(error.message);
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
     }
   }
 );
 
-// Фильтрация
 export const filterUsers = createAsyncThunk(
   'users/filterUsers',
   async (criteria: Partial<User>, { rejectWithValue }) => {
     try {
       const params = new URLSearchParams();
-      if (criteria.department) params.append('department', criteria.department);
-      if (criteria.company) params.append('company', criteria.company);
-      if (criteria.age) params.append('age', criteria.age.toString());
-      
+      Object.entries(criteria).forEach(([key, value]) => {
+        if (value) params.append(key, String(value));
+      });
+
       const response = await fetch(`/api/users/filter?${params.toString()}`);
-      if (!response.ok) throw new Error('Filter request failed');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return await response.json();
-    } catch (error: any) {
-      return rejectWithValue(error.message);
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
     }
   }
 );
 
-// Обновление пользователя
 export const updateUser = createAsyncThunk(
   'users/updateUser',
   async (user: User, { rejectWithValue }) => {
     try {
       const response = await fetch(`/api/users/${user.id}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(user)
       });
-      if (!response.ok) throw new Error('Update failed');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+      
       return await response.json();
-    } catch (error: any) {
-      return rejectWithValue(error.message);
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
     }
   }
 );
@@ -112,7 +117,7 @@ const usersSlice = createSlice({
       state.filterCriteria = action.payload;
       state.currentPage = 0;
     },
-    setSortConfig: (state, action: PayloadAction<{field: keyof User, direction: 'asc' | 'desc'}>) => {
+    setSortConfig: (state, action: PayloadAction<UsersState['sortConfig']>) => {
       state.sortConfig = action.payload;
     },
     setPage: (state, action: PayloadAction<number>) => {
@@ -125,7 +130,6 @@ const usersSlice = createSlice({
     resetUsers: (state) => {
       state.filteredUsers = [];
       state.filterCriteria = {};
-      state.sortConfig = { field: 'name', direction: 'asc' };
       state.currentPage = 0;
     }
   },
@@ -136,42 +140,39 @@ const usersSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchUsers.fulfilled, (state, action) => {
-        state.users = action.payload.data; // берем data из ответа
-        state.totalCount = action.payload.total; // берем total из ответа
-        state.loading = false;
+        state.users = action.payload.data; 
+        state.totalCount = action.payload.total;
         state.hasMore = (state.currentPage + 1) * state.pageSize < action.payload.total;
+        state.loading = false;
         state.lastUpdated = new Date().toISOString();
       })
       .addCase(fetchUsers.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
-      .addCase(filterUsers.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
       .addCase(filterUsers.fulfilled, (state, action) => {
+        console.log('API response:', action.payload);
         state.filteredUsers = action.payload;
         state.totalCount = action.payload.length;
-        state.loading = false;
         state.currentPage = 0;
         state.lastUpdated = new Date().toISOString();
       })
-      .addCase(filterUsers.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
       .addCase(updateUser.fulfilled, (state, action) => {
         const updatedUser = action.payload;
-        const index = state.users.findIndex(u => u.id === updatedUser.id);
-        if (index !== -1) state.users[index] = updatedUser;
         
+        // Обновляем в основном списке
+        const userIndex = state.users.findIndex(u => u.id === updatedUser.id);
+        if (userIndex !== -1) state.users[userIndex] = updatedUser;
+        
+        // Обновляем в отфильтрованном списке
         const filteredIndex = state.filteredUsers.findIndex(u => u.id === updatedUser.id);
         if (filteredIndex !== -1) state.filteredUsers[filteredIndex] = updatedUser;
         
+        // Обновляем выбранного пользователя
         if (state.selectedUser?.id === updatedUser.id) {
           state.selectedUser = updatedUser;
         }
+        
         state.lastUpdated = new Date().toISOString();
       });
   }

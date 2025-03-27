@@ -40,8 +40,14 @@ export interface UsersState {
 
 сначала поступаем так :
 переходим в склонированный репозиторий   
-
+npm i 
+открываем mockServer.js
+находим строку 121
+await generateMockData(); раскоментируем её 
+запускаем создание базы и поднятия сервер
 пишем : node mockServer.js
+потом снова открываем файл mockServer.js, находим строку 121
+await generateMockData(); комментируем обратно 
 
 src/
 ├── mockServer.js       # Поднятие сервера localhost_'смотреть в () как единожды создать бд, Внимательно!'
