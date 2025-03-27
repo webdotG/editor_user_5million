@@ -39,18 +39,19 @@ export interface UsersState {
 }
 
 сначала поступаем так :
-переходим в склонированный репозиторий   
-npm i 
-открываем mockServer.js
-находим строку 121
-await generateMockData(); раскоментируем её 
-запускаем создание базы и поднятия сервер
-пишем : node mockServer.js
-потом снова открываем файл mockServer.js, находим строку 121
-await generateMockData(); комментируем обратно 
+- переходим в склонированный репозиторий   
+- npm i 
+- открываем mockServer.js, находим строку 121
+- await generateMockData(); раскоментируем её 
+- создание базы : node mockServer.js
+- потом снова открываем файл mockServer.js, находим строку 121
+- await generateMockData(); комментируем обратно 
+- поднимаем сервер повторно: node mockServer.js
+  (смотрим что бы был свободен localhost 5173 для CORS)
+- поднимаем клиент : npm run dev 
 
 src/
-├── mockServer.js       # Поднятие сервера localhost_'смотреть в () как единожды создать бд, Внимательно!'
+├── mockServer.js       # Поднятие сервера localhost6969 есть нюанс!
 ├── mockUsers.json      # БД на 2.5млн юзеров
 ├── App.tsx
 ├── main.tsx
@@ -63,17 +64,15 @@ src/
 │           ├── EditingUser.tsx           
 │           └── .module.scss 
 │     ├───UsersList/
-│           ├── store.ts            
+│           ├── UsersList.tsx            
 │           └── .module.scss 
-│       ├── UserEditor.tsx          
-│       └── .module.scss
+│     ├── UserEditor.tsx          
+│     └── .module.scss
 └── styles/
     └── App.module.scss       
 
 
     Генерация:
-
-        
 
         Результат сохраняется в Redux store
 
