@@ -47,10 +47,11 @@ const UsersList: React.FC<UsersListProps> = React.memo(({ onUserSelect }) => {
   const [localError, setLocalError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const handleScroll = useCallback(({ scrollOffset }: { scrollOffset: number }) => {
+    scrollPositionRef.current = scrollOffset;
+  }, []);
+  
   const handleFilterWithScroll = useCallback((criteria: Partial<User>) => {
-    if (listRef.current) {
-      scrollPositionRef.current = listRef.current.state.scrollOffset;
-    }
     dispatch(setFilterCriteria(criteria));
   }, [dispatch]);
 
@@ -105,26 +106,28 @@ const UsersList: React.FC<UsersListProps> = React.memo(({ onUserSelect }) => {
     onUserSelect?.(user);
   }, [dispatch, onUserSelect]);
 
-  const handleNextPage = useCallback(() => {
-    const nextPage = currentPage + 1;
-    
-    // Проверяем, есть ли уже данные для следующей страницы
-    const hasDataForNextPage = (nextPage + 1) * pageSize <= users.length;
-    
-    if (!hasDataForNextPage && hasMore) {
-      dispatch(fetchUsers({
-        page: nextPage,
-        size: pageSize,
-        filters: filterCriteria,
-        sortField: sortConfig.field,
-        sortDirection: sortConfig.direction
-      })).then(() => {
-        dispatch(setPage(nextPage));
-      });
-    } else {
-      dispatch(setPage(nextPage));
-    }
-  }, [currentPage, pageSize, users.length, hasMore, dispatch, filterCriteria, sortConfig]);
+  
+const changePage = useCallback((newPage: number) => {
+  // Проверяем, есть ли уже данные для новой страницы
+  const hasDataForPage = (newPage + 1) * pageSize <= users.length;
+  
+  if (!hasDataForPage && (newPage > currentPage || hasMore)) {
+    // Если данных нет и есть еще страницы - загружаем
+    dispatch(fetchUsers({
+      page: newPage,
+      size: pageSize,
+      filters: filterCriteria,
+      sortField: sortConfig.field,
+      sortDirection: sortConfig.direction
+    })).then(() => {
+      dispatch(setPage(newPage));
+    });
+  } else {
+    // Если данные уже есть - просто меняем страницу
+    dispatch(setPage(newPage));
+  }
+}, [currentPage, pageSize, users.length, hasMore, dispatch, filterCriteria, sortConfig]);
+
 
   const renderUserRow = useCallback(({ index, style }: ListChildComponentProps) => {
     const user = paginatedUsers[index];
@@ -191,120 +194,62 @@ const UsersList: React.FC<UsersListProps> = React.memo(({ onUserSelect }) => {
           />
           
           <div className={styles.filterGroup}>
-            {/* Фильтр по отделам */}
-            <select
-              value={filterCriteria.department || ''}
-              onChange={(e) => debouncedFilter({ 
-                ...filterCriteria,
-                department: e.target.value || undefined 
-              })}
-              className={styles.filterSelect}
-              disabled={loading}
-            >
-              <option value="">Все отделы</option>
-              <option value="IT">IT</option>
-              <option value="HR">HR</option>
-              <option value="Sales">Sales</option>
-              <option value="Marketing">Marketing</option>
-            </select>
 
-            {/* Фильтр по компаниям */}
-            <select
-              value={filterCriteria.company || ''}
-              onChange={(e) => debouncedFilter({ 
-                ...filterCriteria,
-                company: e.target.value || undefined 
-              })}
-              className={styles.filterSelect}
-              disabled={loading}
-            >
-              <option value="">Все компании</option>
-              <option value="Company A">Company A</option>
-              <option value="Company B">Company B</option>
-              <option value="Company C">Company C</option>
-            </select>
-
-            {/* Фильтр по должностям */}
-            <select
-              value={filterCriteria.jobTitle || ''}
-              onChange={(e) => debouncedFilter({ 
-                ...filterCriteria,
-                jobTitle: e.target.value || undefined 
-              })}
-              className={styles.filterSelect}
-              disabled={loading}
-            >
-              <option value="">Все должности</option>
-              <option value="Developer">Developer</option>
-              <option value="Manager">Manager</option>
-              <option value="Director">Director</option>
-            </select>
-
-            <button 
-              onClick={() => dispatch(resetAndReloadUsers({ pageSize }))}
-              className={styles.resetButton}
-              disabled={
-                (!filterCriteria.department && 
-                 !filterCriteria.company && 
-                 !filterCriteria.jobTitle && 
-                 !searchQuery) || 
-                loading
-              }
-            >
-              {loading ? 'Сброс...' : 'Сбросить фильтры'}
-            </button>
           </div>
+
         </div>
       </div>
 
       <div className={styles.statsBar}>
-        <div className={styles.stats}>
-          Всего пользователей: {totalCount}
-          {(filterCriteria.department || filterCriteria.company || filterCriteria.jobTitle || searchQuery) && 
-            ` (Отфильтровано: ${paginatedUsers.length})`}
-        </div>
-        
-        <div className={styles.pagination}>
-          <select 
-            value={pageSize}
-            onChange={(e) => dispatch(setPageSize(Number(e.target.value)))}
-            className={styles.pageSizeSelect}
-            disabled={loading}
-          >
-            {[10, 20, 50, 100].map(size => (
-              <option key={size} value={size}>{size} на странице</option>
-            ))}
-          </select>
-          
-          <button
-            onClick={() => dispatch(setPage(currentPage - 1))}
-            disabled={currentPage === 0 || loading}
-            className={styles.pageButton}
-          >
-            Назад
-          </button>
-          
-          <span className={styles.pageInfo}>
-            Страница {currentPage + 1} из {totalPages}
-          </span>
-          <button
-  onClick={handleNextPage}
-  disabled={!hasMore || loading}
-  className={styles.pageButton}
->
-  {isFetchingMore ? 'Загрузка...' : 'Вперед'}
-</button>
-        </div>
-      </div>
+  <div className={styles.stats}>
+    Всего пользователей: {totalCount}
+    {(filterCriteria.department || filterCriteria.company || filterCriteria.jobTitle || searchQuery) && 
+      ` (Отфильтровано: ${paginatedUsers.length})`}
+  </div>
+  
+  <div className={styles.pagination}>
+    <select 
+      value={pageSize}
+      onChange={(e) => dispatch(setPageSize(Number(e.target.value)))}
+      className={styles.pageSizeSelect}
+      disabled={loading}
+    >
+      {[10, 20, 50, 100].map(size => (
+        <option key={size} value={size}>{size} на странице</option>
+      ))}
+    </select>
+    
+    <button
+      onClick={() => changePage(currentPage - 1)}
+      disabled={currentPage === 0 || loading}
+      className={styles.pageButton}
+    >
+      Назад
+    </button>
+    
+    <span className={styles.pageInfo}>
+      Страница {currentPage + 1} из {totalPages}
+    </span>
+    
+    <button
+      onClick={() => changePage(currentPage + 1)}
+      disabled={!hasMore || loading}
+      className={styles.pageButton}
+    >
+      {isFetchingMore ? 'Загрузка...' : 'Вперед'}
+    </button>
+  </div>
+</div> 
 
       <div className={styles.listContainer} style={{ height: 'calc(100vh - 250px)' }}>
         {paginatedUsers.length > 0 ? (
           <FixedSizeList
             ref={listRef}
             key={listKey}
+            onScroll={handleScroll}
             height={600}
             itemCount={paginatedUsers.length}
-            itemSize={80}
+            itemSize={69}
             width="100%"
             onItemsRendered={({ visibleStopIndex }) => {
               if (visibleStopIndex >= paginatedUsers.length - 5 && 
@@ -342,3 +287,72 @@ const UsersList: React.FC<UsersListProps> = React.memo(({ onUserSelect }) => {
 });
 
 export default UsersList;
+
+
+
+
+
+// <div className={styles.filterGroup}>
+//             {/* Фильтр по отделам */}
+//             <select
+//               value={filterCriteria.department || ''}
+//               onChange={(e) => debouncedFilter({ 
+//                 ...filterCriteria,
+//                 department: e.target.value || undefined 
+//               })}
+//               className={styles.filterSelect}
+//               disabled={loading}
+//             >
+//               <option value="">Все отделы</option>
+//               <option value="IT">IT</option>
+//               <option value="HR">HR</option>
+//               <option value="Sales">Sales</option>
+//               <option value="Marketing">Marketing</option>
+//             </select>
+
+//             {/* Фильтр по компаниям */}
+//             <select
+//               value={filterCriteria.company || ''}
+//               onChange={(e) => debouncedFilter({ 
+//                 ...filterCriteria,
+//                 company: e.target.value || undefined 
+//               })}
+//               className={styles.filterSelect}
+//               disabled={loading}
+//             >
+//               <option value="">Все компании</option>
+//               <option value="Company A">Company A</option>
+//               <option value="Company B">Company B</option>
+//               <option value="Company C">Company C</option>
+//             </select>
+
+//             {/* Фильтр по должностям */}
+//             <select
+//               value={filterCriteria.jobTitle || ''}
+//               onChange={(e) => debouncedFilter({ 
+//                 ...filterCriteria,
+//                 jobTitle: e.target.value || undefined 
+//               })}
+//               className={styles.filterSelect}
+//               disabled={loading}
+//             >
+//               <option value="">Все должности</option>
+//               <option value="Developer">Developer</option>
+//               <option value="Manager">Manager</option>
+//               <option value="Director">Director</option>
+//             </select>
+
+//             <button 
+//               onClick={() => dispatch(resetAndReloadUsers({ pageSize }))}
+//               className={styles.resetButton}
+//               disabled={
+//                 (!filterCriteria.department && 
+//                  !filterCriteria.company && 
+//                  !filterCriteria.jobTitle && 
+//                  !searchQuery) || 
+//                 loading
+//               }
+//             >
+//               {loading ? 'Сброс...' : 'Сбросить фильтры'}
+//             </button>
+//           </div>

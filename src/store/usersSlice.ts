@@ -227,19 +227,6 @@ const usersSlice = createSlice({
       console.log('[STORE] Установлен isFetchingMore:', action.payload);
     },
     
-    // Сброс состояния
-    // resetUsers: (state) => {
-    //   // Не очищаем state.users - сохраняем загруженные данные
-    //   state.filterCriteria = {};
-    //   state.currentPage = 0;
-    //   // state.totalCount не сбрасываем, чтобы пагинация работала
-    //   console.log('[STORE] Сброс фильтров пользователей');
-    //     // Версия с автоматической перезагрузкой
-    //   return {
-    //     ...state,
-    //     loading: true 
-    //   };
-    // }
     resetUsers: (state) => {
       // Сохраняем users, но сбрасываем все остальное
       state.filterCriteria = {};

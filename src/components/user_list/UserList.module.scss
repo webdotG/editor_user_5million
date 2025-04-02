@@ -1,171 +1,256 @@
-.userList {
+@use "sass:color";
+
+$primary-color: #3f51b5;
+$secondary-color: #f50057;
+$text-color: #333;
+$light-gray: #f5f5f5;
+$medium-gray: #e0e0e0;
+$dark-gray: #757575;
+$white: #ffffff;
+$error-color: #d32f2f;
+
+.container {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: #f5f5f5;
   padding: 20px;
-  box-sizing: border-box;
+  background-color: $light-gray;
+  font-family: 'Roboto', sans-serif;
 }
 
-.filterControls {
-  padding: 10px;
+.header {
+  margin-bottom: 20px;
+  
+  h2 {
+    color: $primary-color;
+    margin: 0 0 15px 0;
+    font-size: 24px;
+    font-weight: 500;
+  }
+}
+
+.controls {
   display: flex;
-  gap: 10px;
-  background-color: #fff;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  margin-bottom: 15px;
-  border-radius: 4px;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 20px;
 }
 
-.filterButton {
-  padding: 8px 16px;
-  background-color: #4285f4;
-  color: white;
-  border: none;
+.searchInput {
+  padding: 10px 15px;
+  border: 1px solid $medium-gray;
   border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s;
+  font-size: 16px;
+  width: 100%;
+  max-width: 400px;
+  transition: border-color 0.3s;
+  
+  &:focus {
+    outline: none;
+    border-color: $primary-color;
+    box-shadow: 0 0 0 2px rgba(63, 81, 181, 0.2);
+  }
+  
+  &:disabled {
+    background-color: $medium-gray;
+    cursor: not-allowed;
+  }
+}
 
-  &:hover {
-    background-color: #3367d6;
+.filterGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.filterSelect {
+  padding: 8px 12px;
+  border: 1px solid $medium-gray;
+  border-radius: 4px;
+  background-color: $white;
+  font-size: 14px;
+  min-width: 150px;
+  cursor: pointer;
+  
+  &:focus {
+    outline: none;
+    border-color: $primary-color;
+  }
+  
+  &:disabled {
+    background-color: $medium-gray;
+    cursor: not-allowed;
   }
 }
 
 .resetButton {
   padding: 8px 16px;
-  background-color: #f44336;
-  color: white;
+  background-color: $secondary-color;
+  color: $white;
   border: none;
   border-radius: 4px;
-  cursor: pointer;
   font-size: 14px;
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: #d32f2f;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  
+  &:hover:not(:disabled) {
+    background-color: color.adjust($secondary-color, $lightness: -10%);
+  }
+  
+  &:disabled {
+    background-color: color.adjust($secondary-color, $lightness: 20%);
+    cursor: not-allowed;
   }
 }
 
-.userCount {
-  padding: 10px;
-  background-color: #e0e0e0;
-  font-size: 14px;
-  color: #555;
+.statsBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 15px;
+  padding: 10px 0;
+  border-bottom: 1px solid $medium-gray;
+}
+
+.stats {
+  color: $dark-gray;
+  font-size: 14px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pageSizeSelect {
+  padding: 6px 10px;
+  border: 1px solid $medium-gray;
   border-radius: 4px;
+  font-size: 14px;
+}
+
+.pageButton {
+  padding: 6px 12px;
+  background-color: $primary-color;
+  color: $white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  
+  &:hover:not(:disabled) {
+    background-color: color.adjust($primary-color, $lightness: -10%);
+  }
+  
+  &:disabled {
+    background-color: color.adjust($primary-color, $lightness: 30%);
+    cursor: not-allowed;
+  }
+}
+
+.pageInfo {
+  font-size: 14px;
+  color: $dark-gray;
+  margin: 0 5px;
 }
 
 .listContainer {
   flex: 1;
-  background-color: #fff;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  background-color: $white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
-.userCard {
-  padding: 16px;
-  border-bottom: 1px solid #e0e0e0;
-  background-color: #fff;
+.userRow {
+  padding: 5px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid $medium-gray;
   cursor: pointer;
   transition: background-color 0.2s;
-  will-change: transform;
-
+  
   &:hover {
-    background-color: #f1f1f1;
+    background-color: color.adjust($primary-color, $lightness: 45%);
   }
-}
-
-.selected {
-  background-color: #e3f2fd !important;
-}
-
-.userInfo {
-  display: flex;
-  flex-direction: column;
+  
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
 .userName {
   font-size: 16px;
-  font-weight: bold;
-  margin-bottom: 4px;
+  font-weight: 500;
+  margin-bottom: 5px;
+  color: $text-color;
 }
 
-.userMeta {
+.userId {
+  font-size: 12px;
+  color: $dark-gray;
+}
+
+.userInfo {
   font-size: 14px;
-  color: #666;
+  color: $dark-gray;
 }
 
-/* UserList.module.css */
-.container {
+.loadingContainer, .loadingMore {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  width: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  color: $primary-color;
 }
 
-.listContainer {
-  flex: 1;
-  width: 100%;
-  position: relative; /* Важно для AutoSizer */
+.loadingSpinner {
+  border: 3px solid rgba($primary-color, 0.2);
+  border-radius: 50%;
+  border-top: 3px solid $primary-color;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
 }
 
-/* Явные стили для виртуального списка */
-.virtualizedList {
-  overflow-y: auto;
-  overflow-x: hidden;
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-/* Стили для карточки пользователя */
-.userCard {
-  box-sizing: border-box;
-  padding: 12px;
-  border-bottom: 1px solid #eee;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.userCard:hover {
-  background-color: #f5f5f5;
-}
-
-.userCard.selected {
-  background-color: #e0f7fa;
-}
-
-.container {
+.errorContainer {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  padding: 16px;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  color: $error-color;
 }
 
-.listContainer {
-  flex: 1;
-  width: 100%;
-  margin-top: 16px;
-  border: 1px solid #eee;
+.retryButton {
+  padding: 8px 16px;
+  margin-top: 15px;
+  background-color: $error-color;
+  color: $white;
+  border: none;
   border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  
+  &:hover {
+    background-color: color.adjust($error-color, $lightness: -10%);
+  }
 }
 
 .noResults {
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   height: 100%;
-  color: #666;
-}
-
-.loadingMore {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  color: #666;
-}
-
-.pageButton:disabled {
-  opacity: 0.6;
-  transition: opacity 0.3s ease;
+  color: $dark-gray;
+  font-size: 16px;
 }

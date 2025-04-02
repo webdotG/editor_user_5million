@@ -2,9 +2,10 @@ import React, { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { fetchUsers } from '../store/usersSlice';
 import styles from './AppInitializer.module.scss';
+import type { AppDispatch } from '../store/store'; 
 
 const AppInitializer: React.FC = () => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
 
   useEffect(() => {
     console.log('AppInitializer: starting data load');

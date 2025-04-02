@@ -1,8 +1,53 @@
-# Editor User million's
 
-```JS
+##  Стек
+- React + TypeScript
+- Redux Toolkit
+- React-Window (виртуализация списка)
+- SCSS модули
 
-export interface User {
+## Структура 
+
+```
+src/
+├── mockServer.js 
+├── mockUsers.json        # База данных (1,000,000 пользователей)
+├── App.tsx
+├── main.tsx
+├── store/
+│ ├── store.ts            # Redux store
+│ └── usersSlice.ts
+├── components/
+│ └── EditUser/
+│ ├───EditingUser/        # Компонент редактирования
+│ ├── EditingUser.tsx
+│ └── .module.scss
+│ ├───UsersList/          # Список пользователей
+│ ├── UsersList.tsx
+│ └── .module.scss
+│ ├── UserEditor.tsx      # Общий редактор
+│ └── .module.scss
+└── styles/
+└── App.module.scss 
+```
+
+## Установка и запуск
+
+```bash
+# 1. Генерация тестовых данных (1,000,000 пользователей)
+node mockServer.js --generate
+
+# 2. Запуск mock-сервера (localhost:6969)
+node mockServer.js
+
+# 3. Запуск клиента (localhost:5173)
+npm run dev
+```
+
+Модель данных
+
+```typescript
+
+interface User {
   id: number;
   name: string;
   surname: string;
@@ -12,51 +57,16 @@ export interface User {
   company: string;
   jobTitle: string;
 }
-
-interface UserFilters {
-  name?: string;
-  email?: string;
-  department?: string;
-  company?: string;
-  jobTitle?: string;
-}
+```
 
 
-Поступаем так :
-- node mockServer.js --generate   (создаём моковую бд на 1000000)
-- node mockServer.js              (запускаем бд localhost:6969)
-- npm run dev                     (запускаем клиента на localhost:5173 )
+Оптимизации
 
-
-
-src/
-├── mockServer.js       
-├── mockUsers.json      # БД 
-├── App.tsx
-├── main.tsx
-├── store/
-│   ├── store.ts                
-│   └── usersSlice.ts           
-├── components/
-│   └── EditUser/
-│     ├───EditingUser/
-│           ├── EditingUser.tsx           
-│           └── .module.scss 
-│     ├───UsersList/
-│           ├── UsersList.tsx            
-│           └── .module.scss 
-│     ├── UserEditor.tsx          
-│     └── .module.scss
-└── styles/
-    └── App.module.scss       
-
-
-
-    Генерация:
-        Результат сохраняется в Redux store
-        
-    Фильтрация/сортировка:
-        Пользователь взаимодействует с UI
-        Результат сохраняется в store
-
+```
+- Виртуализация списка (react-window) - рендерим только видимые элементы
+- Пакетная загрузка данных (чанками)
+- Мемоизация компонентов
+- Подгрузка при скролле вниз
+- Сохранение позиции при пагинации
+- Дебаунс запросов
 ```

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store/store';
-import { updateUser, selectUser } from '../../store/usersSlice'; // Добавлен импорт selectUser
+import { updateUser, selectUser } from '../../store/usersSlice';
 import styles from './EditingUser.module.scss';
 
 const UserEditing: React.FC = () => {
@@ -9,30 +9,48 @@ const UserEditing: React.FC = () => {
   const { selectedUser, loading } = useSelector((state: RootState) => state.users);
   const [editedUser, setEditedUser] = useState(selectedUser);
   const [showNotification, setShowNotification] = useState(false);
+  const [notificationTimer, setNotificationTimer] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setEditedUser(selectedUser);
   }, [selectedUser]);
+
+  // Очистка таймера при размонтировании
+  useEffect(() => {
+    return () => {
+      if (notificationTimer) {
+        clearTimeout(notificationTimer);
+      }
+    };
+  }, [notificationTimer]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setEditedUser(prev => prev ? { ...prev, [name]: value } : null);
   }, []);
 
-  const handleSave = useCallback(() => {
-    if (editedUser) {
-      setShowNotification(true);
-      dispatch(updateUser(editedUser))
-        .unwrap()
-        .finally(() => {
-          setShowNotification(false);
-        });
+  const handleSave = useCallback(async () => {
+    if (!editedUser) return;
+
+    setShowNotification(true);
+    
+    try {
+      await dispatch(updateUser(editedUser)).unwrap();
+      
+      // Устанавливаем таймер на 2 секунды для скрытия уведомления
+      const timer = setTimeout(() => {
+        setShowNotification(false);
+      }, 2000);
+      
+      setNotificationTimer(timer);
+    } catch (error) {
+      // В случае ошибки скрываем уведомление сразу
+      setShowNotification(false);
     }
   }, [dispatch, editedUser]);
 
-  // Функция для закрытия редактора
   const handleClose = useCallback(() => {
-    dispatch(selectUser(null)); // Сбрасываем выбранного пользователя
+    dispatch(selectUser(null));
   }, [dispatch]);
 
   if (!selectedUser || !editedUser) {
@@ -102,7 +120,7 @@ const UserEditing: React.FC = () => {
 
       {showNotification && (
         <div className={styles.notification}>
-          Данные отправлены на сервер. Ожидайте подтверждения...
+          Данные успешно отправлены на сервер
         </div>
       )}
     </div>
