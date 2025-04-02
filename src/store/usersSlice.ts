@@ -113,7 +113,7 @@ export const fetchUsers = createAsyncThunk(
         sortDirection = 'asc'
       } = params;
 
-      console.log('[STORE] Запрос пользователей:', { page, size, filters });
+      // console.log('[STORE] Запрос пользователей:', { page, size, filters });
 
       const urlParams = new URLSearchParams({
         page: String(page),
@@ -152,7 +152,7 @@ export const updateUser = createAsyncThunk(
   'users/updateUser',
   async (user: User, { rejectWithValue }) => {
     try {
-      console.log('[STORE] Обновление пользователя:', user.id);
+      // console.log('[STORE] Обновление пользователя:', user.id);
       
       const response = await fetch(`/api/users/${user.id}`, {
         method: 'PATCH',
@@ -195,36 +195,36 @@ const usersSlice = createSlice({
     setFilterCriteria: (state, action: PayloadAction<UserFilters>) => {
       state.filterCriteria = action.payload;
       state.currentPage = 0; // сброс на первую страницу
-      console.log('[STORE] Установлены фильтры:', action.payload);
+      // console.log('[STORE] Установлены фильтры:', action.payload);
     },
     
     // Установка конфигурации сортировки
     setSortConfig: (state, action: PayloadAction<UsersState['sortConfig']>) => {
       state.sortConfig = action.payload;
-      console.log('[STORE] Установлена сортировка:', action.payload);
+      // console.log('[STORE] Установлена сортировка:', action.payload);
     },
     
     // Изменение текущей страницы
     setPage: (state, action: PayloadAction<number>) => {
       state.currentPage = action.payload;
-      console.log('[STORE] Установлена страница:', action.payload);
+      // console.log('[STORE] Установлена страница:', action.payload);
     },
     
     // Изменение размера страницы
     setPageSize: (state, action: PayloadAction<number>) => {
       state.pageSize = action.payload;
       state.currentPage = 0; // Сброс страницы при изменении размера
-      console.log('[STORE] Установлен размер страницы:', action.payload);
+      // console.log('[STORE] Установлен размер страницы:', action.payload);
     },
 
     selectUser: (state, action: PayloadAction<User | null>) => {
       state.selectedUser = action.payload;
-      console.log('[STORE] Выбран пользователь:', action.payload?.id);
+      // console.log('[STORE] Выбран пользователь:', action.payload?.id);
     },
     
     setIsFetchingMore: (state, action: PayloadAction<boolean>) => {
       state.isFetchingMore = action.payload;
-      console.log('[STORE] Установлен isFetchingMore:', action.payload);
+      // console.log('[STORE] Установлен isFetchingMore:', action.payload);
     },
     
     resetUsers: (state) => {
@@ -232,7 +232,7 @@ const usersSlice = createSlice({
       state.filterCriteria = {};
       state.currentPage = 0;
       state.totalCount = state.users.length; 
-      console.log('[STORE] Сброс фильтров пользователей');
+      // console.log('[STORE] Сброс фильтров пользователей');
     }
   },
   extraReducers: (builder) => {
@@ -262,10 +262,10 @@ const usersSlice = createSlice({
         state.isFetchingMore = false;
         state.initialized = true;
         
-        console.log('Saved to Redux:', { 
-          usersCount: state.users.length,
-          currentPage: state.currentPage
-        })
+        // console.log('Saved to Redux:', { 
+        //   usersCount: state.users.length,
+        //   currentPage: state.currentPage
+        // })
       })
       
       .addCase(fetchUsers.rejected, (state, action) => {
@@ -284,7 +284,7 @@ const usersSlice = createSlice({
         }
         
         state.lastUpdated = new Date().toISOString();
-        console.log(`[STORE] Пользователь ${updatedUser.id} обновлен`);
+        // console.log(`[STORE] Пользователь ${updatedUser.id} обновлен`);
       })
       
       // Ошибка обновления

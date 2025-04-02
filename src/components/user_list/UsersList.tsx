@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store/store';
 import { 
   selectUser, 
-  setFilterCriteria, 
+  // setFilterCriteria, 
   fetchUsers,
   resetAndReloadUsers,
   setPage,
@@ -13,7 +13,7 @@ import {
   selectPaginationMeta,
 } from '../../store/usersSlice';
 import { User } from '../../types';
-import { useDebouncedCallback } from 'use-debounce';
+// import { useDebouncedCallback } from 'use-debounce';
 import styles from './UserList.module.scss';
 
 interface UsersListProps {
@@ -39,21 +39,21 @@ const UsersList: React.FC<UsersListProps> = React.memo(({ onUserSelect }) => {
   const {
     currentPage,
     pageSize,
-    totalCount,
+    // totalCount,
     hasMore,
     totalPages
   } = useSelector(selectPaginationMeta);
   
   const [localError, setLocalError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  // const [searchQuery, setSearchQuery] = useState('');
 
   const handleScroll = useCallback(({ scrollOffset }: { scrollOffset: number }) => {
     scrollPositionRef.current = scrollOffset;
   }, []);
   
-  const handleFilterWithScroll = useCallback((criteria: Partial<User>) => {
-    dispatch(setFilterCriteria(criteria));
-  }, [dispatch]);
+  // const handleFilterWithScroll = useCallback((criteria: Partial<User>) => {
+  //   dispatch(setFilterCriteria(criteria));
+  // }, [dispatch]);
 
   useEffect(() => {
     if (!loading && scrollPositionRef.current > 0 && listRef.current) {
@@ -64,7 +64,7 @@ const UsersList: React.FC<UsersListProps> = React.memo(({ onUserSelect }) => {
     }
   }, [loading]);
 
-  const debouncedFilter = useDebouncedCallback(handleFilterWithScroll, 300);
+  // const debouncedFilter = useDebouncedCallback(handleFilterWithScroll, 300);
 
   // Загрузка данных при инициализации
   useEffect(() => {
@@ -92,14 +92,14 @@ const UsersList: React.FC<UsersListProps> = React.memo(({ onUserSelect }) => {
     return () => controller.abort();
   }, [dispatch, pageSize, sortConfig, initialized]);
 
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-    debouncedFilter({ 
-      ...filterCriteria,
-      name: query || undefined 
-    });
-  }, [debouncedFilter, filterCriteria]);
+  // const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const query = e.target.value;
+  //   setSearchQuery(query);
+  //   debouncedFilter({ 
+  //     ...filterCriteria,
+  //     name: query || undefined 
+  //   });
+  // }, [debouncedFilter, filterCriteria]);
 
   const handleUserClick = useCallback((user: User) => {
     dispatch(selectUser(user));
@@ -183,29 +183,14 @@ const changePage = useCallback((newPage: number) => {
       <div className={styles.header}>
         <h2>Список пользователей</h2>
         
-        <div className={styles.controls}>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={handleSearchChange}
-            placeholder="Поиск по имени..."
-            className={styles.searchInput}
-            disabled={loading}
-          />
-          
-          <div className={styles.filterGroup}>
-
-          </div>
-
-        </div>
       </div>
 
       <div className={styles.statsBar}>
-  <div className={styles.stats}>
+  {/* <div className={styles.stats}>
     Всего пользователей: {totalCount}
     {(filterCriteria.department || filterCriteria.company || filterCriteria.jobTitle || searchQuery) && 
       ` (Отфильтровано: ${paginatedUsers.length})`}
-  </div>
+  </div> */}
   
   <div className={styles.pagination}>
     <select 
@@ -267,12 +252,12 @@ const changePage = useCallback((newPage: number) => {
           >
             {renderUserRow}
           </FixedSizeList>
-        ) : (
-          <div className={styles.noResults}>
-            {filterCriteria.department || filterCriteria.company || filterCriteria.jobTitle || searchQuery
-              ? 'Нет пользователей по выбранным фильтрам' 
-              : 'Нет данных для отображения'}
-          </div>
+        ) : ( null
+          // <div className={styles.noResults}>
+          //   {filterCriteria.department || filterCriteria.company || filterCriteria.jobTitle || searchQuery
+          //     ? 'Нет пользователей по выбранным фильтрам' 
+          //     : 'Нет данных для отображения'}
+          // </div>
         )}
         
         {isFetchingMore && (
@@ -290,7 +275,15 @@ export default UsersList;
 
 
 
-
+//  <div className={styles.controls}>
+// <input
+//   type="text"
+//   value={searchQuery}
+//   onChange={handleSearchChange}
+//   placeholder="Поиск по имени..."
+//   className={styles.searchInput}
+//   disabled={loading}
+// /> 
 
 // <div className={styles.filterGroup}>
 //             {/* Фильтр по отделам */}
@@ -356,3 +349,4 @@ export default UsersList;
 //               {loading ? 'Сброс...' : 'Сбросить фильтры'}
 //             </button>
 //           </div>
+// </div>
