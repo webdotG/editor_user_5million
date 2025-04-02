@@ -6,9 +6,6 @@ export default defineConfig({
     worker: {
     format: 'es',
   },
-  optimizeDeps: {
-    exclude: ['@faker-js/faker']
-  },
   server: {
     fs: {
       strict: false, // Для работы с большими файлами
@@ -16,6 +13,16 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:6969'
     }
+  },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        implementation: 'sass' 
+      }
+    }
+  },
+  optimizeDeps: {
+    exclude: ['sass'] // Исключаем из оптимизации
   }
   },
-})
+)

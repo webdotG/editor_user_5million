@@ -10,7 +10,14 @@ export interface User {
 }
 
 export type FilterCriteria = {
-  [key in keyof User]?: string;
+  name?: string;
+  email?: string;
+  department?: string;
+  company?: string;
+  jobTitle?: string;
+  // числа в отдельном фильтре
+  age?: number;
+  id?: number;
 };
 
 export interface SortConfig {
@@ -19,19 +26,19 @@ export interface SortConfig {
 }
 
 export interface UsersState {
-  users: [], // Полный список пользователей
-  filteredUsers: [], // Отфильтрованный список
-  selectedUser: null, // Выбранный пользователь для редактирования
-  loading: false, // Флаг загрузки
-  error: null, // Ошибки при работе с данными
-  filterCriteria: {}, // Текущие критерии фильтрации
-  sortConfig: { field: 'name', direction: 'asc' }, // Параметры сортировки
-  lastUpdated: null, // Время последнего обновления
-  initialized: false, // Флаг инициализации хранилища
-  loadProgress: 0, // Прогресс загрузки (0-100)
-  currentPage: 0, // Текущая страница пагинации
-  pageSize: 50, // Количество элементов на странице
-  totalCount: 0 // Общее количество пользователей
+  users: User[];
+  filteredUsers: User[];
+  selectedUser: User | null;
+  loading: boolean;
+  error: string | null;
+  filterCriteria: FilterCriteria;
+  sortConfig: SortConfig;
+  lastUpdated: string | null;
+  initialized: boolean;
+  loadProgress: number;
+  currentPage: number;
+  pageSize: number;
+  totalCount: number;
   hasMore: boolean;
 }
 

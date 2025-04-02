@@ -10,16 +10,17 @@ const __dirname = dirname(__filename);
 const PORT = 6969;
 const DATA_FILE = join(__dirname, 'mockUsers.json');
 
-// Конфигурация данных
+// Конфигурация генерации тестовых данных
 const DATA_CONFIG = {
-  count: 2500000,
+  count: 1000000,
   departments: ['IT', 'HR', 'Sales', 'Marketing'],
   companies: ['Company A', 'Company B', 'Company C'],
   jobs: ['Developer', 'Manager', 'Director']
 };
 
+// Генерация моковых данных
 async function generateMockData() {
-  console.log('[SERVER] ⏳ Generating mock data...');
+  console.log('[SERVER] Генерация тестовых данных...');
   
   const chunkSize = 100000;
   const chunks = Math.ceil(DATA_CONFIG.count / chunkSize);
@@ -43,90 +44,163 @@ async function generateMockData() {
     });
 
     allData = [...allData, ...chunkData];
-    console.log(`[SERVER] Generated chunk ${i + 1}/${chunks} (${end} records)`);
+    console.log(`[SERVER] Сгенерирован чанк ${i + 1}/${chunks} (${end} записей)`);
   }
 
   writeFileSync(DATA_FILE, JSON.stringify(allData));
-  console.log(`[SERVER] ✅ Mock data generated (${DATA_CONFIG.count} records)`);
+  console.log(`[SERVER] Тестовые данные сохранены в ${DATA_FILE} (${DATA_CONFIG.count} записей)`);
 }
 
+// Основная функция запуска сервера
 async function startServer() {
   const app = express();
 
   // Middleware
   app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type']
   }));
 
   app.use(bodyParser.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true }));
 
-  // Логирование запросов
-  app.use((req, _, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  // Улучшенное логирование
+  app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`, {
+      query: req.query,
+      body: req.body
+    });
     next();
   });
 
   // Проверка существования файла данных
   if (!existsSync(DATA_FILE)) {
-    console.error('[SERVER] ❌ Data file not found. Run with --generate first.');
+    console.error('[SERVER] Файл данных не найден. Запустите с --generate для создания.');
     process.exit(1);
   }
 
-  // Загрузка данных
-  console.log('[SERVER] ⏳ Loading data...');
-  const rawData = readFileSync(DATA_FILE, 'utf-8');
-  const data = JSON.parse(rawData);
-  console.log(`[SERVER] ✅ Loaded ${data.length} records`);
+  // Загрузка данных с обработкой ошибок
+  console.log('[SERVER] Загрузка данных из файла...');
+  let data = [];
+  try {
+    const rawData = readFileSync(DATA_FILE, 'utf-8');
+    data = JSON.parse(rawData);
+    console.log(`[SERVER] Успешно загружено ${data.length} записей`);
+  } catch (err) {
+    console.error('[SERVER] Ошибка загрузки данных:', err);
+    process.exit(1);
+  }
 
-  // API Endpoints
-  app.get('/api/users/paginated', (req, res) => {
-    const page = parseInt(req.query.page) || 0;
-    const size = parseInt(req.query.size) || 50;
-    const start = page * size;
-    const end = start + size;
+  // Эндпоинт для получения пользователей
+  app.get('/api/users', (req, res) => {
+    try {
+      const page = parseInt(req.query.page ) || 0;
+      const size = parseInt(req.query.size ) || 50;
+      const sortField = (req.query.sort ) || 'name';
+      const sortDirection = (req.query.order ) || 'asc';
+      const filters = { ...req.query };
 
-    res.json({
-      data: data.slice(start, end),
-      total: data.length,
-      page,
-      size
-    });
+      // Удаляем служебные параметры из фильтров
+      delete filters.page;
+      delete filters.size;
+      delete filters.sort;
+      delete filters.order;
+
+      console.log('[SERVER] Параметры запроса:', {
+        page,
+        size,
+        sortField,
+        sortDirection,
+        filters
+      });
+
+      let filteredData = [...data];
+
+      // Применяем фильтры
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) {
+          filteredData = filteredData.filter(user => 
+            String(user[key]).toLowerCase().includes(String(value).toLowerCase())
+          );
+        }
+      });
+
+      // Сортировка
+      filteredData.sort((a, b) => {
+        const valueA = a[sortField];
+        const valueB = b[sortField];
+
+        if (typeof valueA === 'string' && typeof valueB === 'string') {
+          return sortDirection === 'asc' 
+            ? valueA.localeCompare(valueB)
+            : valueB.localeCompare(valueA);
+        }
+        return sortDirection === 'asc' 
+          ? Number(valueA) - Number(valueB)
+          : Number(valueB) - Number(valueA);
+      });
+
+      // Пагинация
+      const start = page * size;
+      const end = start + size;
+      const paginatedData = filteredData.slice(start, end);
+
+      console.log('[SERVER] Возвращаемые данные:', {
+        users: paginatedData.length,
+        totalCount: filteredData.length,
+        page,
+        size
+      });
+
+      res.json({
+        users: paginatedData,
+        totalCount: filteredData.length,
+        page,
+        size
+      });
+
+    } catch (err) {
+      console.error('[SERVER] Ошибка обработки запроса:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
   });
 
-  app.get('/api/users/filter', (req, res) => {
-    const { department, company, age } = req.query;
-    let filtered = [...data];
-
-    if (department) {
-      filtered = filtered.filter(u => u.department === department);
-    }
-    if (company) {
-      filtered = filtered.filter(u => u.company === company);
-    }
-    if (age) {
-      filtered = filtered.filter(u => u.age === parseInt(age));
-    }
-
-    res.json(filtered);
-  });
-
+  // Эндпоинт для обновления пользователя
   app.patch('/api/users/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    const userIndex = data.findIndex(u => u.id === id);
-    
-    if (userIndex === -1) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    try {
+      const id = parseInt(req.params.id);
+      const userIndex = data.findIndex(u => u.id === id);
 
-    data[userIndex] = { ...data[userIndex], ...req.body };
-    res.json(data[userIndex]);
+      if (userIndex === -1) {
+        return res.status(404).json({ error: 'Пользователь не найден' });
+      }
+
+      data[userIndex] = { ...data[userIndex], ...req.body };
+      
+      console.log('[SERVER] Обновлен пользователь:', data[userIndex]);
+      
+      res.json(data[userIndex]);
+    } catch (err) {
+      console.error('[SERVER] Ошибка обновления пользователя:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  });
+
+  // Обработка 404
+  app.use((req, res) => {
+    res.status(404).json({ error: 'Not Found' });
+  });
+
+  // Обработка ошибок
+  app.use((err) => {
+    console.error('[SERVER] Необработанная ошибка:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   });
 
   // Запуск сервера
   app.listen(PORT, () => {
-    console.log(`[SERVER] 🚀 Running on http://localhost:${PORT}`);
+    console.log(`[SERVER] Сервер запущен на http://localhost:${PORT}`);
   });
 }
 
@@ -142,7 +216,7 @@ const shouldGenerate = args.includes('--generate');
       await startServer();
     }
   } catch (err) {
-    console.error('[SERVER] ❌ Fatal error:', err);
+    console.error('[SERVER] Критическая ошибка:', err);
     process.exit(1);
   }
 })();

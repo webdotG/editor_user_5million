@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store/store';
-import { updateUser } from '../../store/usersSlice';
+import { updateUser, selectUser } from '../../store/usersSlice'; // Добавлен импорт selectUser
 import styles from './EditingUser.module.scss';
 
 const UserEditing: React.FC = () => {
@@ -30,13 +30,27 @@ const UserEditing: React.FC = () => {
     }
   }, [dispatch, editedUser]);
 
+  // Функция для закрытия редактора
+  const handleClose = useCallback(() => {
+    dispatch(selectUser(null)); // Сбрасываем выбранного пользователя
+  }, [dispatch]);
+
   if (!selectedUser || !editedUser) {
     return <div className={styles.editorPanel}>Выберите пользователя для редактирования</div>;
   }
 
   return (
     <div className={styles.editorPanel}>
-      <h2>Редактирование профиля</h2>
+      <div className={styles.header}>
+        <h2>Редактирование профиля</h2>
+        <button 
+          onClick={handleClose}
+          className={styles.closeButton}
+          aria-label="Закрыть редактор"
+        >
+          &times;
+        </button>
+      </div>
       
       <div className={styles.formGroup}>
         <label>Имя</label>
@@ -76,12 +90,15 @@ const UserEditing: React.FC = () => {
         />
       </div>
 
-      <button 
-        onClick={handleSave}
-        disabled={loading}
-      >
-        {loading ? 'Сохранение...' : 'Сохранить изменения'}
-      </button>
+      <div className={styles.buttons}>
+        <button 
+          onClick={handleSave}
+          disabled={loading}
+          className={styles.saveButton}
+        >
+          {loading ? 'Сохранение...' : 'Сохранить изменения'}
+        </button>
+      </div>
 
       {showNotification && (
         <div className={styles.notification}>

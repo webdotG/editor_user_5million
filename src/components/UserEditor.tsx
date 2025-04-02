@@ -7,7 +7,7 @@ import UserList from './user_list/UsersList';
 import UserEditing from './editing_user/EditingUser';
 
 const UserEditor: React.FC = () => {
-  const { loading, initialized } = useSelector((state: RootState) => state.users);
+  const { loading, initialized, selectedUser } = useSelector((state: RootState) => state.users);
 
   if (!initialized || loading) {
     return <AppInitializer />;
@@ -15,8 +15,18 @@ const UserEditor: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <UserList />
-      <UserEditing />
+      <div className={styles.listContainer}>
+        <UserList />
+      </div>
+      <div className={styles.editorContainer}>
+        {selectedUser ? (
+          <UserEditing />
+        ) : (
+          <div className={styles.noSelection}>
+            Выберите пользователя для редактирования
+          </div>
+        )}
+      </div>
     </div>
   );
 };
